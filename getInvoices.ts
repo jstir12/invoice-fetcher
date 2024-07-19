@@ -1,5 +1,4 @@
 import dotenv from 'dotenv';
-//import fetch, { HeadersInit } from 'node-fetch';
 
 dotenv.config();
 
@@ -50,8 +49,10 @@ const getProjects = async (): Promise<string[]> => {
         const projectNames = report.map(project => project.project_Name);
         return projectNames;
     }
-    catch(err: any){
-        console.error('Get Report error:', err.message);
+    catch(err: unknown){
+        if (err instanceof Error){
+            console.error('Get Report error:', err.message);
+        }
         throw err;
     }
 }
@@ -65,8 +66,10 @@ const main = async (): Promise<void> => {
         const projectNames = await getProjects();
         console.log('Project Names:', projectNames);
     }
-    catch (err: any) {
-        console.error('Error:', err.message);
+    catch (err: unknown) {
+        if (err instanceof Error){
+            console.error('Error:', err.message);
+        }
     }
 }
 
