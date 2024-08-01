@@ -1,4 +1,5 @@
 import dotenv from 'dotenv';
+import fs from 'fs';
 
 dotenv.config();
 
@@ -9,7 +10,16 @@ const HEADERS: HeadersInit = {
 };
 
 interface Project {
+    transaction_Total_Amount: string;
+    line_Description: string;
+    invoice_Number: string;
     project_Name: string;
+    project_Number: string;
+}
+
+interface Invoice {
+    company_Name: string;
+    charges: Array<{totalAmount: number, description: string}>;
 }
 
 interface Data {
@@ -18,7 +28,7 @@ interface Data {
     };
 }
 
-const getProjects = async (): Promise<string[]> => {
+const getProjects = async (): Promise<Map<string, Invoice>> => {
     const url = `${BASE_URL}reports?reportKey=${process.env.REPORT_KEY}`;
     const config = {
         headers: HEADERS
@@ -35,19 +45,30 @@ const getProjects = async (): Promise<string[]> => {
         }
 
         const data: Data = await response.json();
-        console.log('Data:', data);
         
         // Check if the data is in the expected format
         if (!data.data || !Array.isArray(data.data.report)) {
             throw new Error('Report data is missing or not in the expected format');
         }
+        const invoices = new Map<string, Invoice>();
 
-        // Get the project names from the report
-        const report = data.data.report;
-        console.log('Report:', report);
+        for(const project of data.data.report){
+            const invoice = invoices.get(project.invoice_Number) || {
+                company_Name: '',
+                charges: []
+            };
 
-        const projectNames = report.map(project => project.project_Name);
-        return projectNames;
+            invoice.charges.push({
+                totalAmount: parseFloat(project.transaction_Total_Amount),
+                description: project.line_Description
+            });
+            if (invoice.company_Name === '') {
+                invoice.company_Name = project.project_Name;
+            }
+            invoices.set(project.invoice_Number, invoice);
+        }
+
+        return invoices;
     }
     catch(err: unknown){
         if (err instanceof Error){
@@ -57,19 +78,16 @@ const getProjects = async (): Promise<string[]> => {
     }
 }
 
-const getInvoices = async (projectKey: string): Promise<void> => {
-    // Implement your logic here
-}
-
 const main = async (): Promise<void> => {
     try {
-        const projectNames = await getProjects();
-        console.log('Project Names:', projectNames);
+        const invoices = await getProjects();
+
     }
     catch (err: unknown) {
-        if (err instanceof Error){
-            console.error('Error:', err.message);
-        }
+       if (err instanceof Error) {
+           console.error('Error:', err.message);
+       }
+       throw err;
     }
 }
 
