@@ -82,12 +82,18 @@ const main = async (): Promise<void> => {
     try {
         const invoices = await getProjects();
 
+        const dataToWrite = 'Invoice Number,Company Name,Total Amount,Description\n' + 
+            Array.from(invoices.entries()).flatMap(([invoiceNumber, invoice]) => 
+                invoice.charges.map(charge => `${invoiceNumber},${invoice.company_Name},${charge.totalAmount},${charge.description}`)
+            ).join('\n');
+
+        fs.writeFileSync('invoices.csv', dataToWrite);
     }
     catch (err: unknown) {
-       if (err instanceof Error) {
-           console.error('Error:', err.message);
-       }
-       throw err;
+        if (err instanceof Error){
+            console.error('Get Report error:', err.message);
+        }
+        throw err;
     }
 }
 
