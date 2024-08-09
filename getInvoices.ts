@@ -110,8 +110,12 @@ const main = async (): Promise<void> => {
             }
             output += '-1\n'; // This is for the end of the file
             const companyParts: string[] = invoice.company_Name.split('#');
+
+            const path = require('path');
+            
             const fileName = companyParts[1].split('.')[0].replace(/\s/g, '');
-            fs.writeFileSync(`${fileName}.txt`, output);
+            fs.mkdirSync(path.join(__dirname, 'data-files'), { recursive: true });
+            fs.writeFileSync(path.join(__dirname, 'data-files', `${fileName}.txt`), output);
         }
         
     }
