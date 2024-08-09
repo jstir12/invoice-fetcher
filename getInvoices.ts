@@ -78,6 +78,11 @@ const getProjects = async (): Promise<Map<string, Invoice>> => {
     }
 }
 
+const getMemberNumber = (companyName: string): string => {
+    const companyNameParts: string[] = companyName.split('#');
+    return companyNameParts[1].split(' ')[0];
+};
+
 const main = async (): Promise<void> => {
     try {
         const invoices = await getProjects();
@@ -87,8 +92,8 @@ const main = async (): Promise<void> => {
             output += 'T\n'; // This is to signify test data
 
             for (const charge of invoice.charges){
-                const companyNameParts: string[] = invoice.company_Name.split('#');
-                const companyNumber: string = companyNameParts[1].split(' ')[0];
+               const companyNumber: string = getMemberNumber(invoice.company_Name);
+        
                 output += `${companyNumber}\n`;
 
                 output += `${charge.total_Amount}\n`;
@@ -109,11 +114,11 @@ const main = async (): Promise<void> => {
                 output += '1\n'; // This is for quantity
             }
             output += '-1\n'; // This is for the end of the file
-            const companyParts: string[] = invoice.company_Name.split('#');
+            output += 'Y\n' // This is to signify that the invoice is correct
 
             const path = require('path');
             
-            const fileName = companyParts[1].split('.')[0].replace(/\s/g, '');
+            const fileName: string = getMemberNumber(invoice.company_Name);
             fs.mkdirSync(path.join(__dirname, 'data-files'), { recursive: true });
             fs.writeFileSync(path.join(__dirname, 'data-files', `${fileName}.txt`), output);
         }
