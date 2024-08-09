@@ -117,7 +117,6 @@ const main = async (): Promise<void> => {
             output += 'Y\n' // This is to signify that the invoice is correct
 
             const path = require('path');
-            const fs = require('fs');
 
             
             const dataFilesDir = path.join(__dirname, 'data-files');
