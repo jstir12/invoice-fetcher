@@ -117,10 +117,23 @@ const main = async (): Promise<void> => {
             output += 'Y\n' // This is to signify that the invoice is correct
 
             const path = require('path');
+            const fs = require('fs');
+
             
+            const dataFilesDir = path.join(__dirname, 'data-files');
+
+            // Delete all files in the 'data-files' directory
+            if (fs.existsSync(dataFilesDir)) {
+                const files = fs.readdirSync(dataFilesDir);
+
+                for (const file of files) {
+                    fs.unlinkSync(path.join(dataFilesDir, file));
+                }
+            }
+
+            // Now you can write your files to the 'data-files' directory
             const fileName: string = getMemberNumber(invoice.company_Name);
-            fs.mkdirSync(path.join(__dirname, 'data-files'), { recursive: true });
-            fs.writeFileSync(path.join(__dirname, 'data-files', `${fileName}.txt`), output);
+            fs.writeFileSync(path.join(dataFilesDir, `${fileName}.txt`), output);
         }
         
     }
