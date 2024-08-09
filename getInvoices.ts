@@ -19,7 +19,7 @@ interface Project {
 
 interface Invoice {
     company_Name: string;
-    charges: Array<{totalAmount: number, description: string}>;
+    charges: Array<{total_Amount: number, description: string}>;
 }
 
 interface Data {
@@ -59,7 +59,7 @@ const getProjects = async (): Promise<Map<string, Invoice>> => {
             };
 
             invoice.charges.push({
-                totalAmount: parseFloat(project.transaction_Total_Amount),
+                total_Amount: parseFloat(project.transaction_Total_Amount),
                 description: project.line_Description
             });
             if (invoice.company_Name === '') {
@@ -81,20 +81,50 @@ const getProjects = async (): Promise<Map<string, Invoice>> => {
 const main = async (): Promise<void> => {
     try {
         const invoices = await getProjects();
+        
+        for (const [invoiceNumber, invoice] of invoices) {
+            let output: string = '';
+            output += 'T\n'; // This is to signify test data
 
-        const dataToWrite = 'Invoice Number,Company Name,Total Amount,Description\n' + 
-            Array.from(invoices.entries()).flatMap(([invoiceNumber, invoice]) => 
-                invoice.charges.map(charge => `${invoiceNumber},${invoice.company_Name},${charge.totalAmount},${charge.description}`)
-            ).join('\n');
+            for (const charge of invoice.charges){
+                const companyNameParts: string[] = invoice.company_Name.split('#');
+                const companyNumber: string = companyNameParts[1].split(' ')[0];
+                output += `${companyNumber}\n`;
 
-        fs.writeFileSync('invoices.csv', dataToWrite);
-    }
-    catch (err: unknown) {
-        if (err instanceof Error){
-            console.error('Get Report error:', err.message);
+                output += `${charge.total_Amount}\n`;
+                const description: string = charge.description;
+
+                if ((description + '-' + invoiceNumber).length > 85){
+                    output += `${description.substring(0, 35)}^\n`;
+                    output += `${description.substring(35, 85)}^\n`;
+                    output += `${description.substring(85)}-${invoiceNumber}\n`;
+                }
+                else if ((description + '-' + invoiceNumber).length > 35){
+                    output += `${description.substring(0, 35)}^\n`;
+                    output += `${description.substring(35)}-${invoiceNumber}\n`;
+                }
+                else{
+                    output += `${description}\n`;
+                }
+                output += '1\n'; // This is for quantity
+            }
+            output += '-1\n'; // This is for the end of the file
+            const companyParts: string[] = invoice.company_Name.split('#');
+
+            const path = require('path');
+            
+            const fileName = companyParts[1].split('.')[0].replace(/\s/g, '');
+            fs.mkdirSync(path.join(__dirname, 'data-files'), { recursive: true });
+            fs.writeFileSync(path.join(__dirname, 'data-files', `${fileName}.txt`), output);
         }
-        throw err;
+        
     }
+    catch(err: unknown){
+        if(err instanceof Error){
+            console.error('Main error:', err.message);
+        }
+    }
+        
 }
 
 main();
