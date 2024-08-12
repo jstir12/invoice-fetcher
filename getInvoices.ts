@@ -86,7 +86,20 @@ const getMemberNumber = (companyName: string): string => {
 const main = async (): Promise<void> => {
     try {
         const invoices = await getProjects();
+
+        const path = require('path');
+        const dataFilesDir = path.join(__dirname, 'data-files');
         
+        // Delete all files in the 'data-files' directory
+        if (fs.existsSync(dataFilesDir)) {
+            const files = fs.readdirSync(dataFilesDir);
+
+            for (const file of files) {
+                fs.unlinkSync(path.join(dataFilesDir, file));
+            }
+        }
+
+
         for (const [invoiceNumber, invoice] of invoices) {
             let output: string = '';
             output += 'T\n'; // This is to signify test data
@@ -116,21 +129,7 @@ const main = async (): Promise<void> => {
             output += '-1\n'; // This is for the end of the file
             output += 'Y\n' // This is to signify that the invoice is correct
 
-            const path = require('path');
-
-            
-            const dataFilesDir = path.join(__dirname, 'data-files');
-
-            // Delete all files in the 'data-files' directory
-            if (fs.existsSync(dataFilesDir)) {
-                const files = fs.readdirSync(dataFilesDir);
-
-                for (const file of files) {
-                    fs.unlinkSync(path.join(dataFilesDir, file));
-                }
-            }
-
-            // Now you can write your files to the 'data-files' directory
+            // Now write files to the 'data-files' directory
             const fileName: string = getMemberNumber(invoice.company_Name);
             fs.writeFileSync(path.join(dataFilesDir, `${fileName}.txt`), output);
         }
