@@ -2,3 +2,4 @@
 node_modules/
 data-files/
 .DS_Store
+existing_invoice_files.txt

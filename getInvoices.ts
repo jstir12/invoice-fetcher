@@ -89,6 +89,9 @@ const main = async (): Promise<void> => {
 
         const path = require('path');
         const dataFilesDir = path.join(__dirname, 'data-files');
+
+        //Check if file named 'existing_invoice_files' exists
+        const existing_invoice_files = path.join(__dirname, 'existing_invoice_files.txt');
         
         // Delete all files in the 'data-files' directory
         if (fs.existsSync(dataFilesDir)) {
@@ -99,10 +102,24 @@ const main = async (): Promise<void> => {
             }
         }
 
+        // Read the existing_invoice_files file 
+        let existingFiles: string[] = [];
+        if (fs.existsSync(existing_invoice_files)){
+            existingFiles = fs.readFileSync(existing_invoice_files, 'utf8').split('\n');
+        }
+
+
 
         for (const [invoiceNumber, invoice] of invoices) {
+            if (existingFiles.includes(invoiceNumber)) {
+                continue;
+            }
+            else{
+                fs.appendFileSync(existing_invoice_files, `${invoiceNumber}\n`);
+                existingFiles.push(invoiceNumber);
+            }
             let output: string = '';
-            output += 'T\n'; // This is to signify test data
+            output += 'P\n'; // This is to signify production data
 
             for (const charge of invoice.charges){
                const companyNumber: string = getMemberNumber(invoice.company_Name);
@@ -128,10 +145,12 @@ const main = async (): Promise<void> => {
             }
             output += '-1\n'; // This is for the end of the file
             output += 'Y\n' // This is to signify that the invoice is correct
+            
+            const fileName: string = getMemberNumber(invoice.company_Name);
 
             // Now write files to the 'data-files' directory
-            const fileName: string = getMemberNumber(invoice.company_Name);
             fs.writeFileSync(path.join(dataFilesDir, `${fileName}.txt`), output);
+            
         }
         
     }
