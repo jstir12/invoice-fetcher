@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import fs from 'fs';
+import {Client} from 'pg';
 
 dotenv.config();
 
@@ -27,6 +28,14 @@ interface Data {
         report?: Project[];
     };
 }
+
+const client = new Client({
+    host: 'sam.doitbest.com',
+    user: 'www',
+    password: '',
+    database: 'hwi',
+    port: 5432
+});
 
 const getProjects = async (): Promise<Map<string, Invoice>> => {
     const url = `${BASE_URL}reports?reportKey=${process.env.REPORT_KEY}`;
@@ -83,6 +92,20 @@ const getMemberNumber = (companyName: string): string => {
     return companyNameParts[1].split(' ')[0];
 };
 
+const checkMemberNumber = async (memberNumber: string): Promise<boolean> => {
+    try{
+        const query = 'SELECT * FROM members WHERE id = $1';
+        const result = await client.query(query, [memberNumber]);
+        return result.rows.length > 0;
+    }
+    catch(err: unknown){
+        if(err instanceof Error){
+            console.error('Check Member Number error:', err.message);
+        }
+        throw err;
+    }
+};
+
 const main = async (): Promise<void> => {
     try {
         const invoices = await getProjects();
@@ -108,49 +131,64 @@ const main = async (): Promise<void> => {
             existingFiles = fs.readFileSync(existing_invoice_files, 'utf8').split('\n');
         }
 
+        try{
+            await client.connect();
 
-
-        for (const [invoiceNumber, invoice] of invoices) {
-            if (existingFiles.includes(invoiceNumber)) {
-                continue;
-            }
-            else{
-                fs.appendFileSync(existing_invoice_files, `${invoiceNumber}\n`);
-                existingFiles.push(invoiceNumber);
-            }
-            let output: string = '';
-            output += 'P\n'; // This is to signify production data
-
-            for (const charge of invoice.charges){
-               const companyNumber: string = getMemberNumber(invoice.company_Name);
-        
-                output += `${companyNumber}\n`;
-
-                output += `${charge.total_Amount}\n`;
-                const description: string = charge.description;
-
-                if ((description + '-' + invoiceNumber).length > 85){
-                    output += `${description.substring(0, 35)}^\n`;
-                    output += `${description.substring(35, 85)}^\n`;
-                    output += `${description.substring(85)}-${invoiceNumber}\n`;
+            for (const [invoiceNumber, invoice] of invoices) {
+                const companyNumber: string = getMemberNumber(invoice.company_Name);
+                const memberExists: boolean = await checkMemberNumber(companyNumber);
+                if (!memberExists){
+                    console.error(`Member ${companyNumber} does not exist. Invoice ${invoiceNumber} will not be processed.`);
+                    continue;
                 }
-                else if ((description + '-' + invoiceNumber).length > 35){
-                    output += `${description.substring(0, 35)}^\n`;
-                    output += `${description.substring(35)}-${invoiceNumber}\n`;
+
+                if (existingFiles.includes(invoiceNumber)) {
+                    continue;
                 }
                 else{
-                    output += `${description}\n`;
+                    fs.appendFileSync(existing_invoice_files, `${invoiceNumber}\n`);
+                    existingFiles.push(invoiceNumber);
                 }
-                output += '1\n'; // This is for quantity
-            }
-            output += '-1\n'; // This is for the end of the file
-            output += 'Y\n' // This is to signify that the invoice is correct
-            
-            const fileName: string = getMemberNumber(invoice.company_Name);
+                let output: string = '';
+                output += 'P\n'; // This is to signify production data
+                
+                for (const charge of invoice.charges){
 
-            // Now write files to the 'data-files' directory
-            fs.writeFileSync(path.join(dataFilesDir, `${fileName}.txt`), output);
-            
+                    output += `${companyNumber}\n`;
+
+                    output += `${charge.total_Amount}\n`;
+                    const description: string = charge.description;
+
+                    if ((description + '-' + invoiceNumber).length > 85){
+                        output += `${description.substring(0, 35)}^\n`;
+                        output += `${description.substring(35, 85)}^\n`;
+                        output += `${description.substring(85)}-${invoiceNumber}\n`;
+                    }
+                    else if ((description + '-' + invoiceNumber).length > 35){
+                        output += `${description.substring(0, 35)}^\n`;
+                        output += `${description.substring(35)}-${invoiceNumber}\n`;
+                    }
+                    else{
+                        output += `${description}\n`;
+                    }
+                    output += '1\n'; // This is for quantity
+                    output += '-1\n'; // This is for the end of the file
+                    output += 'Y\n' // This is to signify that the invoice is correct
+                        
+                    const fileName: string = getMemberNumber(invoice.company_Name);
+
+                    // Now write files to the 'data-files' directory
+                    fs.writeFileSync(path.join(dataFilesDir, `${fileName}.txt`), output);
+                }
+            }
+        }
+        catch(err: unknown){
+            if(err instanceof Error){
+                console.error('Main error:', err.message);
+            }
+        }
+        finally{
+            await client.end();
         }
         
     }
@@ -159,7 +197,6 @@ const main = async (): Promise<void> => {
             console.error('Main error:', err.message);
         }
     }
-        
 }
 
 main();
